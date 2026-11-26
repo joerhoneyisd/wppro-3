@@ -4126,3 +4126,78 @@ html {
 .hero {
   overflow: clip;
 }
+
+/*  ==== Hero glows (CSS, positioned by js/hero-rocket.js) ====
+   The rocket script sets --rocket-x/y, --nozzle-x/y and --rocket-unit on
+   .hero so these line up with the 3D rocket at every size. */
+/* soft halo behind the rocket; its falloff eases to zero, so no edge shows */
+.hero-halo {
+  position: absolute;
+  left: var(--rocket-x, 75%);
+  top: var(--rocket-y, 50%);
+  z-index: 1;
+  width: calc(var(--rocket-unit, 170px) * 4.5);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle closest-side,
+    rgba(214, 168, 62, 0.180) 0%,
+    rgba(214, 168, 62, 0.168) 15%,
+    rgba(214, 168, 62, 0.136) 30%,
+    rgba(214, 168, 62, 0.091) 45%,
+    rgba(214, 168, 62, 0.047) 60%,
+    rgba(214, 168, 62, 0.015) 75%,
+    rgba(214, 168, 62, 0.001) 90%,
+    rgba(214, 168, 62, 0.000) 100%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+/* engine glow over the nozzles, as in wppro-1's .hero::after: its hot spot
+   (18% down the ellipse) sits on the nozzle exit */
+.hero-engine-glow {
+  position: absolute;
+  left: var(--nozzle-x);
+  top: var(--nozzle-y);
+  z-index: 10;
+  display: none;
+  width: calc(var(--rocket-unit, 170px) * 1.3);
+  aspect-ratio: 3 / 4;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 18%,
+    #ff6700 0%,
+    #ff3b00 34%,
+    #ff260087 54%,
+    transparent 72%
+  );
+  filter: blur(14px);
+  mix-blend-mode: plus-lighter;
+  transform: translate(-50%, -18%) scale(0.92);
+  opacity: 0.54;
+  animation: rd-alt-engine-glow 0.3s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.hero:has(.rd-alt-hero-visual.is-loaded) .hero-engine-glow {
+  display: block;
+}
+@keyframes rd-alt-engine-glow {
+  0% {
+    opacity: 0.42;
+  }
+  25% {
+    opacity: 0.46;
+  }
+  66% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0.48;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-engine-glow {
+    animation: none;
+    opacity: 0.48;
+  }
+}

@@ -105,80 +105,33 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
       layers.push(mesh);
     });
   });
-  /* Foreground glows: soft discs drawn in front of the whole rocket. Each
-     falloff eases to zero with zero slope at the rim (and is dithered so the
-     faint outer ring doesn't band), so no circle edge shows. They aren't
-     attached to the rocket, so the sway never moves them. Each sits halfway
-     to the camera, scaled down to match, so it looks the size it would at
-     the rocket. */
-  function softDisc(alphaAt, colorAt) {
-    const N = 256, c = document.createElement("canvas");
-    c.width = c.height = N;
-    const x = c.getContext("2d"), img = x.createImageData(N, N), d = img.data;
-    for (let py = 0; py < N; py++) {
-      for (let px = 0; px < N; px++) {
-        const r = Math.hypot(px + 0.5 - N / 2, py + 0.5 - N / 2) / (N / 2);
-        if (r >= 1) continue;
-        const col = colorAt(r), o = (py * N + px) * 4;
-        d[o] = col[0];
-        d[o + 1] = col[1];
-        d[o + 2] = col[2];
-        d[o + 3] = Math.max(0, Math.min(255, Math.round(alphaAt(r) * 255 + Math.random() - 0.5)));
-      }
-    }
-    x.putImageData(img, 0, 0);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-  function foregroundSprite(tex, order) {
-    const s = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: tex,
-        toneMapped: false,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        depthTest: false,
-        transparent: true,
-      })
-    );
-    s.renderOrder = order;
-    scene.add(s);
-    return s;
-  }
-  // big gold halo around the whole rocket (replaces the sky's CSS radial gradient)
-  const halo = foregroundSprite(
-    softDisc((r) => 0.14 * Math.pow(1 - r * r, 3), () => [214, 168, 62]),
-    9
-  );
-  // hot glow over all three nozzles
-  const glow = foregroundSprite(
-    softDisc(
-      (r) => 0.95 * Math.pow(1 - r, 2.6),
-      (r) => {
-        const m = Math.min(1, r / 0.5); // hot yellow core into orange
-        return [255, Math.round(200 - 110 * m), Math.round(120 - 100 * m)];
-      }
-    ),
-    10
-  );
-  const NEAR = 0.5; // fraction of the way from the camera to the rocket
-  const FOREGROUND = [
-    { sprite: halo, size: 4.5, at: new THREE.Vector3(0, 0, 0), space: "tilt" }, // rocket middle
-    { sprite: glow, size: 1.4, at: new THREE.Vector3(0.72, 0, 0), space: "model" }, // nozzles
-  ];
-  const anchor = new THREE.Vector3();
-  function placeGlow() {
+  /* The glows are CSS (.hero-halo behind the rocket, .hero-engine-glow over
+     the nozzles; see styles.css). The script only tells CSS where the rocket
+     is on screen and how big it is, via custom properties on .hero:
+       --rocket-x/--rocket-y  rocket middle      --nozzle-x/--nozzle-y  nozzle exits
+       --rocket-unit          pixels per world unit (scales the glows with the rocket)
+     Positions ignore the sway. */
+  const hero = host.closest(".hero") || host;
+  const ROCKET_AT = { at: new THREE.Vector3(0, 0, 0), model: false };
+  const NOZZLE_AT = { at: new THREE.Vector3(0.62, 0, 0), model: true };
+  const proj = new THREE.Vector3();
+  function exposeAnchors(perPx) {
     tilt.updateMatrixWorld();
     model.updateMatrix();
-    for (const f of FOREGROUND) {
-      anchor.copy(f.at);
-      if (f.space === "model") anchor.applyMatrix4(model.matrix); // skip the sway
-      anchor.applyMatrix4(tilt.matrixWorld);
-      f.sprite.position.copy(camera.position).lerp(anchor, NEAR);
-      f.sprite.scale.set(f.size * NEAR, f.size * NEAR, 1);
-    }
+    camera.updateMatrixWorld();
+    const c = canvas.getBoundingClientRect(), hr = hero.getBoundingClientRect();
+    const put = ({ at, model: inModel }, nx, ny) => {
+      proj.copy(at);
+      if (inModel) proj.applyMatrix4(model.matrix); // skip the sway
+      proj.applyMatrix4(tilt.matrixWorld).project(camera);
+      hero.style.setProperty(nx, (c.left - hr.left + ((proj.x + 1) / 2) * c.width).toFixed(1) + "px");
+      hero.style.setProperty(ny, (c.top - hr.top + ((1 - proj.y) / 2) * c.height).toFixed(1) + "px");
+    };
+    put(ROCKET_AT, "--rocket-x", "--rocket-y");
+    put(NOZZLE_AT, "--nozzle-x", "--nozzle-y");
+    hero.style.setProperty("--rocket-unit", (1 / perPx).toFixed(2) + "px");
   }
+
   const engineLight = new THREE.PointLight(0xff7a2a, 2.5, 3, 1.2);
   engineLight.position.set(0.75, 0, 0.15);
   model.add(engineLight);
@@ -216,7 +169,7 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     const shift = canvas.offsetTop + h / 2 - hostH / 2;
     camera.position.set(0, -shift * perPx, z);
     camera.updateProjectionMatrix();
-    placeGlow();
+    exposeAnchors(perPx);
     if (!running && loaded) renderer.render(scene, camera);
   }
 
@@ -235,9 +188,7 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
       l.scale.set(still ? 1 : 1 + 0.04 * Math.sin(t * 29 + i), k, still ? 1 : 1 + 0.04 * Math.cos(t * 31 + i));
       l.position.y = (-l.userData.h * k) / 2;
     });
-    glow.material.opacity = still ? 0.9 : 0.85 + 0.1 * Math.sin(t * 26);
     engineLight.intensity = still ? 2.5 : 2.5 + 0.35 * Math.sin(t * 34) + 0.2 * Math.sin(t * 19);
-    placeGlow();
     renderer.render(scene, camera);
   }
 
