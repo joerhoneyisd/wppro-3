@@ -26,16 +26,17 @@ function start() {
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.9; // reflections for the gold trim, kept low so the night sky still reads
+  scene.environmentIntensity = 0.45; // soft all-round reflections; kept low so the side key dominates
   pmrem.dispose();
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 
-  // Moonlit key from above left, cool rim from behind, warm engine light below.
-  const key = new THREE.DirectionalLight(0xdce9ff, 3.2);
-  key.position.set(-2, 5, 3);
+  // Key light from the left (not from the camera), gold rim from behind right,
+  // warm engine light below.
+  const key = new THREE.DirectionalLight(0xf4f1ea, 4.2);
+  key.position.set(-6, 1.8, 0.6);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x7fb2ff, 1.4);
+  const rim = new THREE.DirectionalLight(0xffb547, 2.2);
   rim.position.set(3, 1, -4);
   scene.add(rim);
 
@@ -196,13 +197,13 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
   }
 
   const clock = new THREE.Clock();
-  const FLAME_RATE = 0.25;
+  const FLAME_RATE = 0.1;
   let T = 0;
   function frame() {
     T += Math.min(clock.getDelta(), 0.05);
     const still = calm.matches;
     sway.rotation.y = still ? 0 : Math.sin(T * 0.45) * 0.22;
-    // flames pulse on a slowed clock (a quarter of wppro-2's speed)
+    // flames pulse on a slowed clock (a tenth of wppro-2's speed)
     const t = still ? 0 : T * FLAME_RATE;
     const k = still ? 1 : 0.9 + 0.1 * Math.sin(t * 38) + 0.06 * Math.sin(t * 23 + 1.3);
     layers.forEach((l) => {
