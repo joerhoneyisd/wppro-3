@@ -12,6 +12,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
    direction matters). x: + right / - left. y: + above / - below.
    z: + toward the viewer / - behind the rocket. */
 const LIGHTS = {
+  exposure: 1.05, // overall brightness of the whole render
   reflections: 0.45, // soft all-round studio reflections (mostly seen in the gold trim)
   key: { color: 0xf4f1ea, intensity: 4.2, position: [-6, 1.8, 0.6] }, // main light, from the left
   rim: { color: 0xffb547, intensity: 2.2, position: [3, 1, -4] }, // gold backlight from behind right
@@ -34,7 +35,7 @@ function start() {
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = LIGHTS.exposure;
   renderer.setClearColor(0x000000, 0);
 
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -46,12 +47,14 @@ function start() {
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 
-  // build the lights from LIGHTS (top of file)
+  // build the lights from LIGHTS (top of file); the tuner edits them live
+  const LIGHT_OBJECTS = {};
   for (const name of ["key", "rim"]) {
     const L = LIGHTS[name];
     const light = new THREE.DirectionalLight(L.color, L.intensity);
     light.position.set(...L.position);
     scene.add(light);
+    LIGHT_OBJECTS[name] = light;
   }
 
   // tilt: nose leans slightly away from the camera, like the toy rocket
@@ -150,6 +153,7 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
   const engineLight = new THREE.PointLight(E.color, E.intensity, E.distance, E.decay);
   engineLight.position.set(...E.position);
   model.add(engineLight);
+  LIGHT_OBJECTS.engine = engineLight;
 
   // Trim the model's solid exhaust cones: drop triangles that sit wholly past a nozzle exit.
   function trimExhaust(mesh) {
@@ -205,6 +209,51 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     });
     engineLight.intensity = still ? E.intensity : E.intensity + E.flicker * (Math.sin(t * 34) + 0.57 * Math.sin(t * 19));
     renderer.render(scene, camera);
+  }
+
+  /* ---- light tuner (js/light-tuner.js): click the rocket to open it.
+     Only on localhost / file:// or with ?tune in the URL. ---- */
+  const TUNER_URL = new URL("./light-tuner.js", import.meta.url).href;
+  const tuning =
+    /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ||
+    location.protocol === "file:" ||
+    new URLSearchParams(location.search).has("tune");
+  function applyLight(name) {
+    const L = LIGHTS[name], o = LIGHT_OBJECTS[name];
+    if (o) {
+      o.color.set(L.color);
+      if (name !== "engine") o.intensity = L.intensity; // the engine's is set every frame from LIGHTS
+      if (L.position) o.position.set(...L.position);
+      if ("distance" in L) o.distance = L.distance;
+      if ("decay" in L) o.decay = L.decay;
+    }
+    if (name === "reflections") scene.environmentIntensity = LIGHTS.reflections;
+    if (name === "exposure") renderer.toneMappingExposure = LIGHTS.exposure;
+    if (!running) renderer.render(scene, camera);
+  }
+  function openTuner() {
+    const go = () => window.LightTuner.open({ title: "wppro-3 rocket lights", lights: LIGHTS, apply: applyLight });
+    if (window.LightTuner) return go();
+    const tag = document.createElement("script");
+    tag.src = TUNER_URL;
+    tag.onload = go;
+    document.head.appendChild(tag);
+  }
+  if (tuning) {
+    const picker = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    const overRocket = (e) => {
+      if (!loaded || (window.LightTuner && window.LightTuner.isOpenAt(e.target))) return false;
+      const r = canvas.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      picker.setFromCamera(ndc, camera);
+      return picker.intersectObject(model, true).length > 0;
+    };
+    window.addEventListener("click", (e) => {
+      if (overRocket(e)) openTuner();
+    });
+    window.addEventListener("pointermove", (e) => {
+      document.documentElement.style.cursor = overRocket(e) ? "pointer" : "";
+    }, { passive: true });
   }
 
   /* ---- run only while the hero is on screen and the model is loaded ---- */
