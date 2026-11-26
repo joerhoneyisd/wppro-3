@@ -4059,3 +4059,69 @@ html {
 .cta-btn-outline {
   background-color: #14120d;
 }
+
+/*  ==== Metallic gold buttons ====
+   Polished-metal banding: a pale highlight on top, a dark bronze horizon
+   line across the middle, warm bounce light at the bottom. The bevel comes
+   from lighter top/left edges and darker bottom/right ones. */
+.btn-primary,
+.pricing-badge,
+.btn-secondary:hover,
+.btn-secondary:focus-visible,
+.wppro-postloop .btn-secondary:hover,
+.wppro-postloop .btn-secondary:focus-visible {
+  background-color: #d5a018 !important;
+  background-image: linear-gradient(
+    180deg,
+    #fbeeb8 0%,
+    #ecc65a 20%,
+    #c88f1a 47%,
+    #94600f 53%,
+    #cf9c2c 76%,
+    #f3d784 100%
+  ) !important;
+  border-color: #f6e2a0 #c08a1c #8a5c0b #e0b44a !important;
+  color: #14120d !important;
+}
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  background-image: linear-gradient(
+    180deg,
+    #fff4c8 0%,
+    #f2cf68 20%,
+    #d29a22 47%,
+    #a06a12 53%,
+    #d8a734 76%,
+    #f7df92 100%
+  ) !important;
+}
+/* a reflection slides across once on hover / keyboard focus */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* above the gold, below the label */
+  background: linear-gradient(
+    105deg,
+    transparent 36%,
+    rgba(255, 251, 232, 0.75) 50%,
+    transparent 64%
+  );
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.btn-primary:hover::after,
+.btn-primary:focus-visible::after {
+  transform: translateX(100%);
+  transition: transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary::after {
+    display: none;
+  }
+}
