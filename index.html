@@ -88,7 +88,7 @@
               ><div class="logo-row">
                 <div class="logo-box">
                   <img
-                    src="images/wppro-logo.png"
+                    src="images/wppro-logo-gold.png"
                     alt="WPPro"
                     class="logo-img"
                     loading="eager"
@@ -518,27 +518,9 @@
                   id="rd-alt-hero-visual"
                   class="rd-alt-hero-visual"
                   role="img"
-                  aria-label="Advanced rocket launching through illuminated clouds"
+                  aria-label="A black and gold rocket launching, engines firing"
                 >
-                  <div class="rd-alt-sonic rd-alt-motion" aria-hidden="true">
-                    <!-- Each turning ring is its own layer so the GPU rotates it without repainting. -->
-                    <div class="sonic-layer sonic-static"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r1"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r2"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r3"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r4"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r12"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r13"></div>
-                    <div class="sonic-layer sonic-ring sonic-ring--r14"></div>
-                  </div>
-                  <img
-                    class="rd-alt-rocket"
-                    fetchpriority="high"
-                    src="images/advanced-rocket-1.webp"
-                    width="1024"
-                    height="1536"
-                    alt=""
-                  />
+                  <canvas class="hero-rocket" data-model="models/rocket.glb"></canvas>
                 </div>
               </div>
             </div>
@@ -1237,7 +1219,7 @@
                         class="cockpit-panel-image stack wppro-postloop-el--fill"
                       >
                         <img
-                          src="images/wppro-logo-white.png"
+                          src="images/wppro-logo-gold.png"
                           alt="WPPro Logo"
                           width="1200"
                           height="287"
@@ -1377,7 +1359,7 @@
                     ><div class="stack">
                       <div class="logo-box">
                         <img
-                          src="images/wppro-logo-white.png"
+                          src="images/wppro-logo-gold.png"
                           alt="WPPro"
                           class="logo-img"
                           loading="lazy"
@@ -1554,5 +1536,14 @@
     </footer>
     <script src="js/nav.js"></script>
     <script src="js/site.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./js/vendor/three/three.module.min.js",
+          "three/addons/": "./js/vendor/three/addons/"
+        }
+      }
+    </script>
+    <script type="module" src="js/hero-rocket.js"></script>
   </body>
 </html>
