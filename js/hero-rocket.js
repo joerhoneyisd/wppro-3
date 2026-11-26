@@ -105,10 +105,13 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
       layers.push(mesh);
     });
   });
-  /* Glow: one soft disc over all three nozzles, in front of the whole rocket.
-     Its falloff reaches zero with zero slope at the rim, so no circle edge
-     shows. It isn't attached to the rocket, so the sway never moves it. */
-  function glowTexture() {
+  /* Foreground glows: soft discs drawn in front of the whole rocket. Each
+     falloff eases to zero with zero slope at the rim (and is dithered so the
+     faint outer ring doesn't band), so no circle edge shows. They aren't
+     attached to the rocket, so the sway never moves them. Each sits halfway
+     to the camera, scaled down to match, so it looks the size it would at
+     the rocket. */
+  function softDisc(alphaAt, colorAt) {
     const N = 256, c = document.createElement("canvas");
     c.width = c.height = N;
     const x = c.getContext("2d"), img = x.createImageData(N, N), d = img.data;
@@ -116,13 +119,11 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
       for (let px = 0; px < N; px++) {
         const r = Math.hypot(px + 0.5 - N / 2, py + 0.5 - N / 2) / (N / 2);
         if (r >= 1) continue;
-        const a = 0.95 * Math.pow(1 - r, 2.6); // ~0.45 at r = 0.25, like the old gradient
-        const m = Math.min(1, r / 0.5); // hot yellow core into orange
-        const o = (py * N + px) * 4;
-        d[o] = 255;
-        d[o + 1] = Math.round(200 - 110 * m);
-        d[o + 2] = Math.round(120 - 100 * m);
-        d[o + 3] = Math.round(a * 255);
+        const col = colorAt(r), o = (py * N + px) * 4;
+        d[o] = col[0];
+        d[o + 1] = col[1];
+        d[o + 2] = col[2];
+        d[o + 3] = Math.max(0, Math.min(255, Math.round(alphaAt(r) * 255 + Math.random() - 0.5)));
       }
     }
     x.putImageData(img, 0, 0);
@@ -130,30 +131,53 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   }
-  const glow = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: glowTexture(),
-      toneMapped: false,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      depthTest: false,
-      transparent: true,
-    })
+  function foregroundSprite(tex, order) {
+    const s = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: tex,
+        toneMapped: false,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+        transparent: true,
+      })
+    );
+    s.renderOrder = order;
+    scene.add(s);
+    return s;
+  }
+  // big gold halo around the whole rocket (replaces the sky's CSS radial gradient)
+  const halo = foregroundSprite(
+    softDisc((r) => 0.14 * Math.pow(1 - r * r, 3), () => [214, 168, 62]),
+    9
   );
-  glow.renderOrder = 10;
-  scene.add(glow);
-  const GLOW_SIZE = 1.4; // world size it had when it sat at the nozzles
-  const GLOW_AT = new THREE.Vector3(0.72, 0, 0); // in model space, without the sway
-  const GLOW_NEAR = 0.5; // fraction of the way from the camera to that spot
-  const glowAnchor = new THREE.Vector3();
+  // hot glow over all three nozzles
+  const glow = foregroundSprite(
+    softDisc(
+      (r) => 0.95 * Math.pow(1 - r, 2.6),
+      (r) => {
+        const m = Math.min(1, r / 0.5); // hot yellow core into orange
+        return [255, Math.round(200 - 110 * m), Math.round(120 - 100 * m)];
+      }
+    ),
+    10
+  );
+  const NEAR = 0.5; // fraction of the way from the camera to the rocket
+  const FOREGROUND = [
+    { sprite: halo, size: 4.5, at: new THREE.Vector3(0, 0, 0), space: "tilt" }, // rocket middle
+    { sprite: glow, size: 1.4, at: new THREE.Vector3(0.72, 0, 0), space: "model" }, // nozzles
+  ];
+  const anchor = new THREE.Vector3();
   function placeGlow() {
     tilt.updateMatrixWorld();
     model.updateMatrix();
-    glowAnchor.copy(GLOW_AT).applyMatrix4(model.matrix).applyMatrix4(tilt.matrixWorld);
-    // slide it along the camera ray toward the camera and shrink it to match,
-    // so it looks the same size and spot but sits in front of the rocket
-    glow.position.copy(camera.position).lerp(glowAnchor, GLOW_NEAR);
-    glow.scale.set(GLOW_SIZE * GLOW_NEAR, GLOW_SIZE * GLOW_NEAR, 1);
+    for (const f of FOREGROUND) {
+      anchor.copy(f.at);
+      if (f.space === "model") anchor.applyMatrix4(model.matrix); // skip the sway
+      anchor.applyMatrix4(tilt.matrixWorld);
+      f.sprite.position.copy(camera.position).lerp(anchor, NEAR);
+      f.sprite.scale.set(f.size * NEAR, f.size * NEAR, 1);
+    }
   }
   const engineLight = new THREE.PointLight(0xff7a2a, 2.5, 3, 1.2);
   engineLight.position.set(0.75, 0, 0.15);
@@ -186,8 +210,8 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     camera.aspect = w / h;
     // Scale against the visual box (the canvas overhangs it), then shift the view so
     // the rocket stays centred on the visual rather than on the taller canvas.
-    const hostH = host.clientHeight || h;
-    const z = 4.6 * Math.max(1, 0.62 / (w / hostH)) * (h / hostH);
+    const hostH = host.clientHeight || h, hostW = host.clientWidth || w;
+    const z = 4.6 * Math.max(1, 0.62 / (hostW / hostH)) * (h / hostH);
     const perPx = (2 * z * Math.tan((camera.fov * Math.PI) / 360)) / h;
     const shift = canvas.offsetTop + h / 2 - hostH / 2;
     camera.position.set(0, -shift * perPx, z);
@@ -197,23 +221,22 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
   }
 
   const clock = new THREE.Clock();
-  const FLAME_RATE = 0.1;
   let T = 0;
   function frame() {
     T += Math.min(clock.getDelta(), 0.05);
     const still = calm.matches;
     sway.rotation.y = still ? 0 : Math.sin(T * 0.45) * 0.22;
-    // flames pulse on a slowed clock (a tenth of wppro-2's speed)
-    const t = still ? 0 : T * FLAME_RATE;
-    const k = still ? 1 : 0.9 + 0.1 * Math.sin(t * 38) + 0.06 * Math.sin(t * 23 + 1.3);
+    // fast ripple (original speed), but the flames barely change length
+    const t = still ? 0 : T;
+    const k = still ? 1 : 1 + 0.025 * Math.sin(t * 38) + 0.015 * Math.sin(t * 23 + 1.3);
     layers.forEach((l) => {
       const i = l.userData.i;
       l.material.uniforms.uTime.value = t;
-      l.scale.set(still ? 1 : 1 + 0.06 * Math.sin(t * 29 + i), k, still ? 1 : 1 + 0.06 * Math.cos(t * 31 + i));
+      l.scale.set(still ? 1 : 1 + 0.04 * Math.sin(t * 29 + i), k, still ? 1 : 1 + 0.04 * Math.cos(t * 31 + i));
       l.position.y = (-l.userData.h * k) / 2;
     });
-    glow.material.opacity = still ? 0.9 : 0.8 + 0.2 * Math.sin(t * 26);
-    engineLight.intensity = still ? 2.5 : 2.5 + 0.7 * Math.sin(t * 34) + 0.35 * Math.sin(t * 19);
+    glow.material.opacity = still ? 0.9 : 0.85 + 0.1 * Math.sin(t * 26);
+    engineLight.intensity = still ? 2.5 : 2.5 + 0.35 * Math.sin(t * 34) + 0.2 * Math.sin(t * 19);
     placeGlow();
     renderer.render(scene, camera);
   }

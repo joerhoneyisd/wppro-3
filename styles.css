@@ -1686,9 +1686,8 @@ body.page-home .cta {
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 75% 50%, rgba(233, 183, 57, 0.3), transparent 31%),
-    linear-gradient(180deg, #070706 0%, #1a1917 42%, #daa318 76%, #ebc45f 100%);
+  /* the glow around the rocket is drawn by js/hero-rocket.js */
+  background: linear-gradient(180deg, #070706 0%, #1a1917 42%, #daa318 76%, #ebc45f 100%);
   will-change: transform;
 }
 .hero-content {
@@ -1740,13 +1739,13 @@ body.page-home .cta {
    rocket against the visual, not the canvas. */
 .hero-rocket {
   position: absolute;
-  top: -10%;
-  right: 0;
+  top: -70%;
+  right: -50%;
   bottom: -35%;
-  left: 0;
+  left: -50%;
   display: block;
-  width: 100%;
-  height: 145%;
+  width: 200%;
+  height: 205%;
   pointer-events: none;
 }
 @media (max-width: 900px) {
@@ -4007,9 +4006,7 @@ html {
 }
 .hero-sky {
   /* near-black night into a warm bronze horizon */
-  background:
-    radial-gradient(circle at 75% 50%, rgba(214, 168, 62, 0.12), transparent 34%),
-    linear-gradient(180deg, #070706 0%, #12110e 40%, #2a2214 72%, #6b4f1d 100%);
+  background: linear-gradient(180deg, #070706 0%, #12110e 40%, #2a2214 72%, #6b4f1d 100%);
 }
 .hero-text {
   border-color: rgba(233, 196, 106, 0.22);
@@ -4124,4 +4121,8 @@ html {
   .btn-primary::after {
     display: none;
   }
+}
+/* the rocket canvas overhangs the hero; clip it without making a scroller */
+.hero {
+  overflow: clip;
 }
