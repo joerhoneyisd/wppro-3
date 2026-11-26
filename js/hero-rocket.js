@@ -14,12 +14,12 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 const LIGHTS = {
   exposure: 1.05, // overall brightness of the whole render
   reflections: 0.45, // soft all-round studio reflections (mostly seen in the gold trim)
-  key: { color: 0xf4f1ea, intensity: 4.2, position: [-6, 1.8, 0.6] }, // main light, from the left
-  rim: { color: 0xffb547, intensity: 2.2, position: [3, 1, -4] }, // gold backlight from behind right
+  key: { color: 0xc7eeff, intensity: 1.911, position: [-4.794, 1.471, -3.482] }, // main light: cool, from behind left
+  rim: { color: 0xffa114, intensity: 3.207, position: [3, 1, -4] }, // gold backlight from behind right
   // orange point light at the engines. position is in the model's own space, where
   // the nozzles point along +x (x 0.6 = nozzle exits). distance: reach, decay: falloff,
   // flicker: how much the intensity wobbles
-  engine: { color: 0xff7a2a, intensity: 2.5, distance: 3, decay: 1.2, position: [0.75, 0, 0.15], flicker: 0.35 },
+  engine: { color: 0xff7a2a, intensity: 6.781, distance: 3, decay: 1.2, position: [0.75, 0, 0.15], flicker: 0.35 },
 };
 
 const host = document.getElementById("rd-alt-hero-visual");
