@@ -6,6 +6,21 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
+/* ---- LIGHTS: every light on the rocket, in one place ----
+   color: hex. intensity: brightness. position: [x, y, z] the light shines
+   FROM, toward the rocket at the origin (directional lights: only the
+   direction matters). x: + right / - left. y: + above / - below.
+   z: + toward the viewer / - behind the rocket. */
+const LIGHTS = {
+  reflections: 0.45, // soft all-round studio reflections (mostly seen in the gold trim)
+  key: { color: 0xf4f1ea, intensity: 4.2, position: [-6, 1.8, 0.6] }, // main light, from the left
+  rim: { color: 0xffb547, intensity: 2.2, position: [3, 1, -4] }, // gold backlight from behind right
+  // orange point light at the engines. position is in the model's own space, where
+  // the nozzles point along +x (x 0.6 = nozzle exits). distance: reach, decay: falloff,
+  // flicker: how much the intensity wobbles
+  engine: { color: 0xff7a2a, intensity: 2.5, distance: 3, decay: 1.2, position: [0.75, 0, 0.15], flicker: 0.35 },
+};
+
 const host = document.getElementById("rd-alt-hero-visual");
 const canvas = host && host.querySelector(".hero-rocket");
 if (canvas) start();
@@ -26,19 +41,18 @@ function start() {
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.45; // soft all-round reflections; kept low so the side key dominates
+  scene.environmentIntensity = LIGHTS.reflections;
   pmrem.dispose();
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 
-  // Key light from the left (not from the camera), gold rim from behind right,
-  // warm engine light below.
-  const key = new THREE.DirectionalLight(0xf4f1ea, 4.2);
-  key.position.set(-6, 1.8, 0.6);
-  scene.add(key);
-  const rim = new THREE.DirectionalLight(0xffb547, 2.2);
-  rim.position.set(3, 1, -4);
-  scene.add(rim);
+  // build the lights from LIGHTS (top of file)
+  for (const name of ["key", "rim"]) {
+    const L = LIGHTS[name];
+    const light = new THREE.DirectionalLight(L.color, L.intensity);
+    light.position.set(...L.position);
+    scene.add(light);
+  }
 
   // tilt: nose leans slightly away from the camera, like the toy rocket
   const tilt = new THREE.Group();
@@ -132,8 +146,9 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     hero.style.setProperty("--rocket-unit", (1 / perPx).toFixed(2) + "px");
   }
 
-  const engineLight = new THREE.PointLight(0xff7a2a, 2.5, 3, 1.2);
-  engineLight.position.set(0.75, 0, 0.15);
+  const E = LIGHTS.engine;
+  const engineLight = new THREE.PointLight(E.color, E.intensity, E.distance, E.decay);
+  engineLight.position.set(...E.position);
   model.add(engineLight);
 
   // Trim the model's solid exhaust cones: drop triangles that sit wholly past a nozzle exit.
@@ -188,7 +203,7 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
       l.scale.set(still ? 1 : 1 + 0.04 * Math.sin(t * 29 + i), k, still ? 1 : 1 + 0.04 * Math.cos(t * 31 + i));
       l.position.y = (-l.userData.h * k) / 2;
     });
-    engineLight.intensity = still ? 2.5 : 2.5 + 0.35 * Math.sin(t * 34) + 0.2 * Math.sin(t * 19);
+    engineLight.intensity = still ? E.intensity : E.intensity + E.flicker * (Math.sin(t * 34) + 0.57 * Math.sin(t * 19));
     renderer.render(scene, camera);
   }
 
