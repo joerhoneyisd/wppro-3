@@ -61,8 +61,10 @@ function start() {
   const tilt = new THREE.Group();
   tilt.rotation.x = -0.16;
   scene.add(tilt);
+  const follow = new THREE.Group(); // turns slowly toward the cursor
+  tilt.add(follow);
   const sway = new THREE.Group(); // slow left/right yaw
-  tilt.add(sway);
+  follow.add(sway);
   // The model lies along +x with its nose at -x; stand it up, nose to the sky.
   const model = new THREE.Group();
   model.rotation.set(0, -Math.PI / 2, -Math.PI / 2, "YXZ");
@@ -127,7 +129,7 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
      is on screen and how big it is, via custom properties on .hero:
        --rocket-x/--rocket-y  rocket middle      --nozzle-x/--nozzle-y  nozzle exits
        --rocket-unit          pixels per world unit (scales the glows with the rocket)
-     Positions ignore the sway. */
+     Positions ignore the sway and cursor follow. */
   const hero = host.closest(".hero") || host;
   const ROCKET_AT = { at: new THREE.Vector3(0, 0, 0), model: false };
   const NOZZLE_AT = { at: new THREE.Vector3(0.62, 0, 0), model: true };
@@ -192,11 +194,38 @@ gl_FragColor=vec4(uColor*(1.+(1.-t)*.7),a);}`;
     if (!running && loaded) renderer.render(scene, camera);
   }
 
+  /* ---- cursor follow, like wppro-2's but slow: a few seconds to catch up ---- */
+  const FOLLOW = {
+    rate: 0.8, // how quickly it turns toward the cursor (wppro-2 uses 7); ~1/rate s to get most of the way
+    max: 0.6, // furthest it will turn either way, in radians (~35°)
+    depth: 2.5, // how far in front of the rocket the cursor is imagined to be; smaller = bigger turns
+  };
+  let pointerX = 0;
+  let pointerActive = false;
+  window.addEventListener("pointermove", (e) => {
+    if (window.LightTuner && window.LightTuner.isOpenAt(e.target)) return; // hold still while tuning
+    const r = canvas.getBoundingClientRect();
+    if (!r.width) return;
+    pointerX = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointerActive = true;
+  }, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => { pointerActive = false; });
+  const ray = new THREE.Vector3();
+
   const clock = new THREE.Clock();
   let T = 0;
   function frame() {
-    T += Math.min(clock.getDelta(), 0.05);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    T += dt;
     const still = calm.matches;
+    let goal = 0;
+    if (pointerActive && !still) {
+      // where the cursor's ray crosses the plane `depth` in front of the rocket
+      ray.set(pointerX, 0, 0.5).unproject(camera).sub(camera.position).normalize();
+      const x = camera.position.x + ray.x * ((FOLLOW.depth - camera.position.z) / ray.z);
+      goal = Math.max(-FOLLOW.max, Math.min(FOLLOW.max, Math.atan2(x, FOLLOW.depth)));
+    }
+    follow.rotation.y = still ? 0 : follow.rotation.y + (goal - follow.rotation.y) * (1 - Math.exp(-dt * FOLLOW.rate));
     sway.rotation.y = still ? 0 : Math.sin(T * 0.45) * 0.22;
     // fast ripple (original speed), but the flames barely change length
     const t = still ? 0 : T;
