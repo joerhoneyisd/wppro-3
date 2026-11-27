@@ -4058,39 +4058,38 @@ html {
 }
 
 /*  ==== Metallic gold buttons ====
-   Polished-metal banding: a pale highlight on top, a dark bronze horizon
-   line across the middle, warm bounce light at the bottom. The bevel comes
-   from lighter top/left edges and darker bottom/right ones. */
+   A flat, satin gold face (no dark band behind the label) inside a
+   polished edge: the border is transparent and shows a brighter, banded
+   gold gradient painted on the border box, so the rim catches the light. */
 .btn-primary,
 .pricing-badge,
 .btn-secondary:hover,
 .btn-secondary:focus-visible,
 .wppro-postloop .btn-secondary:hover,
 .wppro-postloop .btn-secondary:focus-visible {
-  background-color: #d5a018 !important;
-  background-image: linear-gradient(
-    180deg,
-    #fbeeb8 0%,
-    #ecc65a 20%,
-    #c88f1a 47%,
-    #94600f 53%,
-    #cf9c2c 76%,
-    #f3d784 100%
-  ) !important;
-  border-color: #f6e2a0 #c08a1c #8a5c0b #e0b44a !important;
+  --gold-face: linear-gradient(180deg, #f1cf6c 0%, #e6bb48 100%);
+  --gold-edge: linear-gradient(
+    120deg,
+    #fff8d8 0%,
+    #e0ab2e 22%,
+    #fff3c2 42%,
+    #a8730f 62%,
+    #f6dc86 80%,
+    #b9821a 100%
+  );
+  background-color: #e6bb48 !important;
+  background-image: var(--gold-face), var(--gold-edge) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  border-color: transparent !important;
   color: #14120d !important;
+}
+.pricing-badge {
+  border: 2px solid transparent; /* room for the polished edge */
 }
 .btn-primary:hover,
 .btn-primary:focus-visible {
-  background-image: linear-gradient(
-    180deg,
-    #fff4c8 0%,
-    #f2cf68 20%,
-    #d29a22 47%,
-    #a06a12 53%,
-    #d8a734 76%,
-    #f7df92 100%
-  ) !important;
+  --gold-face: linear-gradient(180deg, #f6d878 0%, #ecc352 100%);
 }
 /* a reflection slides across once on hover / keyboard focus */
 .btn-primary {
